@@ -5,7 +5,7 @@ HOME='~/'
 TEMPDIR='/tmp/tmpdir'
 DOCKER_USER=""
 DOCKER_TOKEN=""
-DOCKER_REPO="dockerproject"
+DOCKER_REPO=""
 
 #Colors
 RED='\033[0;31m'
@@ -13,13 +13,10 @@ NC='\033[0m'
 
 
 
-
-
-
 ####PACKAGES
 
 #This checks for any docker installation and removes it.
-echo "${RED}Removing old Docker packages${NC}"
+echo -e "${RED}Removing old Docker packages${NC}"
 sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras -y
 #Delete images, containers, etc.
 sudo rm -rf /var/lib/docker
@@ -28,7 +25,7 @@ sudo rm -rf /etc/apt/keyrings/docker.gpg
 
 
 #Add docker's pgp keys
-echo  "${RED}Adding docker's pgp keys ${NC}"
+echo -e  "${RED}Adding docker's pgp keys ${NC}"
 sudo apt-get update 
 sudo apt-get install ca-certificates curl gnupg -y
 sudo install -m 0755 -d /etc/apt/keyrings 
@@ -36,7 +33,7 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o 
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
 #Add repository
-echo "${RED}Adding repository ${NC}"
+echo -e "${RED}Adding repository ${NC}"
 echo \
   "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
@@ -44,22 +41,22 @@ echo \
 sudo apt-get update 
 
 #Install Docker
-echo "${RED}Installing docker ${NC}"
+echo -e "${RED}Installing docker ${NC}"
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 
 #Install docker-compose
-echo "${RED}Installing docker-compose ${NC}"
+echo -e "${RED}Installing docker-compose ${NC}"
 sudo curl -SL https://github.com/docker/compose/releases/download/v2.23.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
 sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
 #Enable service
-echo "${RED}Enabling service ${NC}"
+echo -e "${RED}Enabling service ${NC}"
 sudo systemctl enable docker
 
 
 ####REPOSITORY
-echo "${RED}Cloning respository ${NC}"
+echo -e "${RED}Cloning respository ${NC}"
 if [ -d $TEMPDIR/295words-docker/ ];
 then
 	echo "Repository already exist"
@@ -68,7 +65,7 @@ git clone -b ejercicio2-dockeriza https://github.com/roxsross/bootcamp-devops-20
 fi
 
 ##DOCKERFILES
-echo "${RED}Creating Dockerfiles ${NC}"
+echo -e "${RED}Creating Dockerfiles ${NC}"
 
 #Api
 cat <<EOF > ${TEMPDIR}/295words-docker/api/Dockerfile
@@ -127,11 +124,14 @@ EXPOSE 5432
 EOF
 
 
+
+echo -e "${RED}Login in to Docker ${NC}"
 #Logueo a dockerhub
 echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USER" --password-stdin
 
 
 
+echo -e "${RED}Building tagging and pushing...${NC}"
 #Funciona para hacer build,tag y push de cada container.
 function build(){
 	local containers=("web" "db" "api")
@@ -147,8 +147,9 @@ function build(){
 build
 
 #Genero docker-compose.yaml
+echo -e "${RED}Creating docker-compose.yaml file...${NC}"
 
-cat <<EOF > docker-compose.yml
+cat <<EOF > $TEMPDIR/docker-compose.yml
 version: '3'
 
 services:
@@ -159,14 +160,14 @@ services:
 
   db:
     image: luke8815/dockerproject:db
-    expose:
+    ports:
       - "5432:5432"
     networks:
       - red1
 
   web:
     image: luke8815/dockerproject:web
-    expose:
+    ports:
       - "80:80"
     networks:
       - red1
@@ -175,3 +176,10 @@ networks:
   red1:
     driver: bridge
 EOF
+
+
+##Run Docker compose
+
+echo -e "${RED} Executing docker-compose up -d ${NC}"
+cd $TEMPDIR
+docker-compose up -d
